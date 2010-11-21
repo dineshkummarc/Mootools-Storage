@@ -7,8 +7,11 @@ license: MIT-style
 authors:
 - Arieh Glazer
 
+contributors:
+- Amadeus Demarzi
+
 requires:
-- core/1.2.4 : [Core,Class,Class.Extras,Cookie]
+- core/1.2.4+ : [Core,Class,Class.Extras,Cookie]
 
 provides: [LocalStorage]
 
@@ -33,99 +36,117 @@ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE 
+THE SOFTWARE
 */
-(function($,window,undef){
+ (function() {
 
-window['LocalStorage'] = new Class({
-    Implements : [Options]
-    , options : {
-          path : '*'
-        , name : window.location.hostname
-        , duration : 60*60*24*30
-        , debug : false
-    }
-    , storage : null
-    , initialize : function(options){
-         var $this = this;
-         
-         this.setOptions(options);
-         
-         if (window.localStorage){ //HTML5 storage
-            if (this.options.debug) console.log('using localStorage')
-            this.storage = window.localStorage;
-         }else if (Browser.Engine.trident){ //IE < 8
-                if (this.options.debug) console.log('using behavior Storage');
-            	this.storage = (function(){
-                    var storage = document.createElement("span");
-                    storage.style.behavior = "url(#default#userData)";
-                    $(document.body).adopt(storage);  
-                    storage.load($this.options.name);
-                    
-                    return {
-                        setItem : function(name,value){
-                            storage.setAttribute(name,value);
-                            storage.save($this.options.name);
-                        }
-                        , getItem : function (name){
-                            return storage.getAttribute(name);
-                        }
-                        , removeItem : function(name){
-                            storage.removeAttribute(name);
-                            storage.save($this.options.name);
-                        }
-                    };
-                })();
-         }else if (window.globalStorage){ //FF<3.5
-            if (this.options.debug) console.log('using globalStorage');
-            this.storage = (function(){
-                storage = globalStorage[$this.options.name];
-                return {
-                        setItem : function(name,value){
-                            storage[name] = value;
-                        }
-                        , getItem : function (name){
-                            return storage[name].value;
-                        }
-                        , removeItem : function(name){
-                            delete(storage[name]);
-                        }
-                    };
-            })();
-         }else{ //All others
-            if (this.options.debug) console.log('using cookies');
-            this.storage = (function(){
-                var options ={
-                    path : $this.options.path
-                    , duration : $this.options.duration
-                };
-                
-                return {
-                        setItem : function(name,value){
-                             Cookie.write(name,value,options);
-                        }
-                        , getItem : function (name){
-                             return Cookie.read(name);
-                        }
-                        , removeItem : function(name){
-                             Cookie.dispose(name);
-                        }
-                    };
-            })();
-         }
-    },
-    set : function(name,value){
-        this.storage.setItem(name,JSON.encode(value));
-        return this;
-    }
-    , get : function (name){
-        
-        return JSON.decode(this.storage.getItem(name));
-    }
-    , remove : function (name){
-        this.storage.removeItem(name);
-        return this;
-    }
+var LocalStorage = window.LocalStorage = new Class({
+
+	Implements: [Options, Events],
+
+	options: {
+		path: '*',
+		name: window.location.hostname,
+		duration: 60 * 60 * 24 * 30
+	},
+
+	storage: null,
+
+	initialize: function(options) {
+		this.setOptions(options);
+
+		if (window.localStorage) {
+			this.storage = window.localStorage;
+		} else if (Browser.Engine.trident) {
+			//IE < 8
+			this.storage = (function() {
+				var storage = document.createElement("span");
+				storage.style.behavior = "url(#default#userData)";
+				storage.inject(document.body);
+				storage.load(this.options.name);
+
+				return {
+					setItem: (function(name, value) {
+						storage.setAttribute(name, value);
+						storage.save(this.options.name);
+					}).bind(this),
+
+					getItem: (function(name) {
+						return storage.getAttribute(name);
+					}).bind(this),
+
+					removeItem: (function(name) {
+						storage.removeAttribute(name);
+						storage.save(this.options.name);
+					}).bind(this)
+				};
+			}).apply(this);
+
+		} else if (window.globalStorage) {
+			this.storage = (function() {
+				var storage = window.globalStorage[this.options.name];
+
+				return {
+					setItem: (function(name, value) {
+						storage[name] = value;
+					}).bind(this),
+
+					getItem: (function(name) {
+						return storage[name].value;
+					}).bind(this),
+
+					removeItem: (function(name) {
+						delete(storage[name]);
+					}).bind(this)
+				};
+			}).apply(this);
+		} else {
+			this.storage = (function() {
+				var options = {
+					path: this.options.path,
+					duration: this.options.duration
+				};
+
+				return {
+					setItem: (function(name, value) {
+						Cookie.write(name, value, options);
+					}).bind(this),
+
+					getItem: (function(name) {
+						return Cookie.read(name);
+					}).bind(this),
+
+					removeItem: (function(name) {
+						Cookie.dispose(name);
+					}).bind(this)
+				};
+			}).apply(this);
+		}
+	},
+
+	set: function(name, value) {
+		this.storage.setItem(name, JSON.encode(value));
+
+		this.fireEvent('set', [name, value]);
+
+		return this;
+	},
+
+	get: function(name) {
+		var data = JSON.decode(this.storage.getItem(name));
+
+		this.fireEvent('get', [name, data]);
+
+		return data;
+	},
+
+	remove: function(name) {
+		this.fireEvent('remove', name);
+
+		this.storage.removeItem(name);
+
+		return this;
+	}
 });
 
-})(document.id,this);
+})();

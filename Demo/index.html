@@ -2,21 +2,36 @@
 <html lang="en-US">
 <head>
 	<meta charset="UTF-8">
-	<title></title>
+	<title>Storage Demo</title>
+	<script type='text/javascript' src='https://ajax.googleapis.com/ajax/libs/mootools/1.3.0/mootools-yui-compressed.js'></script>
+	<script type="text/javascript" src="../Source/LocalStorage.js"></script>
+	<script type="text/javascript">
+	
+	window.addEvent('domready', function(){
+		var st = new LocalStorage();
+
+		document.id('set').addEvent('click',function(e){
+			e.preventDefault();
+			st.set('name',{a:1,b:2});
+		});
+		
+		document.id('get').addEvent('click',function(e){
+			e.preventDefault();
+			document.id('res').set('text',JSON.encode(st.get('name')));
+		});
+		
+		document.id('remove').addEvent('click',function(e){
+			e.preventDefault();
+			st.remove('name');
+			document.id('res').set('text','removed name data');
+		});
+	});
+    </script>
 </head>
 <body>
-    <a href="javascript:;" id='set'>set</a>
-    <a href="javascript:;" id='get'>get</a>
-    <div id="res"></div>
-	<script type='text/javascript' src='http://ajax.googleapis.com/ajax/libs/mootools/1.2.4/mootools-yui-compressed.js'></script>
-    <script type="text/javascript" src="../Source/LocalStorage.js"></script>
-    <script type="text/javascript">
-    var st = new LocalStorage({debug:true});
-    
-    $('set').addEvent('click',function(){st.set('name',{a:1,b:2})});
-    $('get').addEvent('click',function(){
-        $('res').set('html',st.get('name').a);
-    });
-    </script>
+	<a href="#" id='set'>set</a>
+	<a href="#" id='get'>get</a>
+	<a href="#" id='remove'>remove</a>
+	<div id="res"></div>
 </body>
 </html>
